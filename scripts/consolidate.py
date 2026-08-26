@@ -290,9 +290,9 @@ def main(argv: list[str]) -> int:
         output = render_markdown(result, severity_order)
 
     if args.out:
-        Path(args.out).write_text(output, encoding="utf-8")
+        Path(args.out).write_text(output, encoding="utf-8", newline="\n")
     else:
-        sys.stdout.write(output)
+        sys.stdout.buffer.write(output.encode("utf-8"))
 
     if args.exit_code:
         has_critical = any(f["severity"] == "critical" for f in result["findings"])

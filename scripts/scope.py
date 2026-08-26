@@ -195,9 +195,10 @@ def main(argv: list[str]) -> int:
     result = build_result(base, changed_files, agents, skipped_agents, generic_layer)
 
     if args.markdown:
-        sys.stdout.write(render_markdown(result))
+        output = render_markdown(result)
     else:
-        print(json.dumps(result, indent=2))
+        output = json.dumps(result, indent=2) + "\n"
+    sys.stdout.buffer.write(output.encode("utf-8"))
 
     return 0
 
