@@ -1,0 +1,45 @@
+{
+  "layer": "domain-reviewer",
+  "layer_priority": 3,
+  "findings": [
+    {
+      "severity": "critical",
+      "title": "Order total recomputed from cart after the discount is already subtracted",
+      "file": "src/orders/service.py",
+      "line": 89,
+      "description": "finalize_order() calls compute_subtotal(cart) again after apply_discount() has already mutated the cart total, silently discarding the discount on the persisted order.",
+      "fix": "Compute the subtotal once, apply the discount to that value, and persist the result without recomputing from the cart.",
+      "rule_id": "PRICE-001"
+    },
+    {
+      "severity": "critical",
+      "title": "Payment gateway captures funds before the order row commits",
+      "file": "src/payments/gateway.py",
+      "line": 43,
+      "description": "The Stripe-style capture call happens inside the same function as order creation but before the transaction commits, breaking the atomicity the checkout flow assumes.",
+      "fix": "Persist the order in a committed transaction before calling out to the payment gateway.",
+      "rule_id": "TXN-002"
+    },
+    {
+      "severity": "important",
+      "title": "Discount code validated only on the client side",
+      "file": "src/orders/service.py",
+      "line": 151,
+      "description": "The service layer accepts any discount_code string from the request and never re-checks its format or expiry against the discount table."
+    },
+    {
+      "severity": "important",
+      "title": "Transaction boundary does not wrap the payment capture call",
+      "file": "src/orders/service.py",
+      "line": 300,
+      "description": "capture_and_finalize() opens a database transaction for the order write but calls the payment gateway outside of it, so a gateway failure after a partial commit leaves inconsistent state."
+    },
+    {
+      "severity": "suggestion",
+      "title": "Repository method returns ORM model instead of a domain entity",
+      "file": "src/orders/repository.py",
+      "line": 5,
+      "description": "get_order() returns the SQLAlchemy model directly, leaking the persistence layer into callers that should only see the domain entity."
+    }
+  ]
+}

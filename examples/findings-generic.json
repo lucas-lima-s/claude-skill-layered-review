@@ -1,0 +1,98 @@
+{
+  "layer": "generic",
+  "layer_priority": 1,
+  "findings": [
+    {
+      "severity": "critical",
+      "title": "Order total recomputed after discount is applied",
+      "file": "src/orders/service.py",
+      "line": 88,
+      "description": "The subtotal is recalculated from the cart after the discount has already been subtracted, so the discount is effectively lost on the final total.",
+      "fix": "Recompute the subtotal before applying the discount, or apply the discount to the already-final total instead of recomputing.",
+      "rule_id": "PRICE-001"
+    },
+    {
+      "severity": "critical",
+      "title": "Payment captured before order is persisted",
+      "file": "src/payments/gateway.py",
+      "line": 42,
+      "description": "capture_payment() runs before the order row is committed, so a crash between the two leaves a charged customer with no order record.",
+      "fix": "Persist the order first, then capture payment, or wrap both in a saga with compensation.",
+      "rule_id": "TXN-002"
+    },
+    {
+      "severity": "important",
+      "title": "Discount code validated only on the client",
+      "file": "src/orders/service.py",
+      "line": 150,
+      "description": "The discount code format is checked in the UI but the server trusts whatever code arrives in the request body.",
+      "fix": "Re-validate the discount code format and eligibility server-side before applying it."
+    },
+    {
+      "severity": "important",
+      "title": "Silent except around database write",
+      "file": "src/orders/repository.py",
+      "line": 20,
+      "description": "A bare except swallows any error raised while writing the order row, so failed writes look like successes to the caller.",
+      "fix": "Catch the specific database exception, log it, and re-raise or return an explicit failure."
+    },
+    {
+      "severity": "important",
+      "title": "Timezone-naive datetime used for invoice due date",
+      "file": "src/utils/dates.py",
+      "line": 10,
+      "description": "datetime.now() without a timezone is used to compute the invoice due date, which drifts depending on server locale.",
+      "fix": "Use an explicit UTC-aware datetime and convert to the customer's timezone only for display."
+    },
+    {
+      "severity": "important",
+      "title": "Order status transition skips validation",
+      "file": "src/orders/service.py",
+      "line": 200,
+      "description": "set_status() writes the new status directly without checking that the transition is legal from the current status.",
+      "fix": "Route every status change through the state machine's transition table."
+    },
+    {
+      "severity": "suggestion",
+      "title": "Unused import of legacy pricing module",
+      "file": "src/orders/service.py",
+      "line": 5,
+      "description": "legacy_pricing is imported but never referenced in this file."
+    },
+    {
+      "severity": "suggestion",
+      "title": "Magic number for retry count",
+      "file": "src/payments/gateway.py",
+      "line": 12,
+      "description": "The retry loop hardcodes 3 with no named constant or comment explaining the choice."
+    },
+    {
+      "severity": "suggestion",
+      "title": "Query built with string concatenation",
+      "file": "src/orders/repository.py",
+      "line": 60,
+      "description": "The filter clause is built with string concatenation instead of the query builder's parameter binding."
+    },
+    {
+      "severity": "suggestion",
+      "title": "Function exceeds 80 lines",
+      "file": "src/orders/service.py",
+      "line": 230,
+      "description": "apply_checkout() has grown past 80 lines and mixes pricing, inventory, and notification concerns."
+    },
+    {
+      "severity": "important",
+      "title": "Mutable default argument on Order constructor",
+      "file": "src/orders/models.py",
+      "line": 33,
+      "description": "Order.__init__ defaults items to a list literal, which is shared across every instance created without an explicit items argument."
+    },
+    {
+      "severity": "suggestion",
+      "title": "Docstring missing for public function",
+      "file": "src/orders/service.py",
+      "line": 12,
+      "description": "apply_checkout() is part of the public API but has no docstring."
+    }
+  ]
+}

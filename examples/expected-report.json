@@ -1,0 +1,195 @@
+{
+  "layers": [
+    {
+      "name": "generic",
+      "count": 12
+    },
+    {
+      "name": "domain-reviewer",
+      "count": 5
+    },
+    {
+      "name": "e2e-test-reviewer",
+      "count": 0
+    }
+  ],
+  "not_run": [
+    {
+      "name": "ux-flow-reviewer",
+      "reason": "no matching files"
+    },
+    {
+      "name": "coherence-guardian",
+      "reason": "no matching files"
+    }
+  ],
+  "total_before_dedup": 17,
+  "total_after_dedup": 14,
+  "merged_away": 3,
+  "findings": [
+    {
+      "severity": "critical",
+      "title": "Order total recomputed from cart after the discount is already subtracted",
+      "file": "src/orders/service.py",
+      "line": 89,
+      "description": "finalize_order() calls compute_subtotal(cart) again after apply_discount() has already mutated the cart total, silently discarding the discount on the persisted order.",
+      "fix": "Compute the subtotal once, apply the discount to that value, and persist the result without recomputing from the cart.",
+      "rule_id": "PRICE-001",
+      "sources": [
+        "domain-reviewer",
+        "generic"
+      ],
+      "merged_count": 2
+    },
+    {
+      "severity": "critical",
+      "title": "Payment gateway captures funds before the order row commits",
+      "file": "src/payments/gateway.py",
+      "line": 43,
+      "description": "The Stripe-style capture call happens inside the same function as order creation but before the transaction commits, breaking the atomicity the checkout flow assumes.",
+      "fix": "Persist the order in a committed transaction before calling out to the payment gateway.",
+      "rule_id": "TXN-002",
+      "sources": [
+        "domain-reviewer",
+        "generic"
+      ],
+      "merged_count": 2
+    },
+    {
+      "severity": "important",
+      "title": "Mutable default argument on Order constructor",
+      "file": "src/orders/models.py",
+      "line": 33,
+      "description": "Order.__init__ defaults items to a list literal, which is shared across every instance created without an explicit items argument.",
+      "sources": [
+        "generic"
+      ],
+      "merged_count": 1
+    },
+    {
+      "severity": "important",
+      "title": "Silent except around database write",
+      "file": "src/orders/repository.py",
+      "line": 20,
+      "description": "A bare except swallows any error raised while writing the order row, so failed writes look like successes to the caller.",
+      "fix": "Catch the specific database exception, log it, and re-raise or return an explicit failure.",
+      "sources": [
+        "generic"
+      ],
+      "merged_count": 1
+    },
+    {
+      "severity": "important",
+      "title": "Discount code validated only on the client side",
+      "file": "src/orders/service.py",
+      "line": 151,
+      "description": "The service layer accepts any discount_code string from the request and never re-checks its format or expiry against the discount table.",
+      "sources": [
+        "domain-reviewer",
+        "generic"
+      ],
+      "merged_count": 2
+    },
+    {
+      "severity": "important",
+      "title": "Order status transition skips validation",
+      "file": "src/orders/service.py",
+      "line": 200,
+      "description": "set_status() writes the new status directly without checking that the transition is legal from the current status.",
+      "fix": "Route every status change through the state machine's transition table.",
+      "sources": [
+        "generic"
+      ],
+      "merged_count": 1
+    },
+    {
+      "severity": "important",
+      "title": "Transaction boundary does not wrap the payment capture call",
+      "file": "src/orders/service.py",
+      "line": 300,
+      "description": "capture_and_finalize() opens a database transaction for the order write but calls the payment gateway outside of it, so a gateway failure after a partial commit leaves inconsistent state.",
+      "sources": [
+        "domain-reviewer"
+      ],
+      "merged_count": 1
+    },
+    {
+      "severity": "important",
+      "title": "Timezone-naive datetime used for invoice due date",
+      "file": "src/utils/dates.py",
+      "line": 10,
+      "description": "datetime.now() without a timezone is used to compute the invoice due date, which drifts depending on server locale.",
+      "fix": "Use an explicit UTC-aware datetime and convert to the customer's timezone only for display.",
+      "sources": [
+        "generic"
+      ],
+      "merged_count": 1
+    },
+    {
+      "severity": "suggestion",
+      "title": "Repository method returns ORM model instead of a domain entity",
+      "file": "src/orders/repository.py",
+      "line": 5,
+      "description": "get_order() returns the SQLAlchemy model directly, leaking the persistence layer into callers that should only see the domain entity.",
+      "sources": [
+        "domain-reviewer"
+      ],
+      "merged_count": 1
+    },
+    {
+      "severity": "suggestion",
+      "title": "Query built with string concatenation",
+      "file": "src/orders/repository.py",
+      "line": 60,
+      "description": "The filter clause is built with string concatenation instead of the query builder's parameter binding.",
+      "sources": [
+        "generic"
+      ],
+      "merged_count": 1
+    },
+    {
+      "severity": "suggestion",
+      "title": "Unused import of legacy pricing module",
+      "file": "src/orders/service.py",
+      "line": 5,
+      "description": "legacy_pricing is imported but never referenced in this file.",
+      "sources": [
+        "generic"
+      ],
+      "merged_count": 1
+    },
+    {
+      "severity": "suggestion",
+      "title": "Docstring missing for public function",
+      "file": "src/orders/service.py",
+      "line": 12,
+      "description": "apply_checkout() is part of the public API but has no docstring.",
+      "sources": [
+        "generic"
+      ],
+      "merged_count": 1
+    },
+    {
+      "severity": "suggestion",
+      "title": "Function exceeds 80 lines",
+      "file": "src/orders/service.py",
+      "line": 230,
+      "description": "apply_checkout() has grown past 80 lines and mixes pricing, inventory, and notification concerns.",
+      "sources": [
+        "generic"
+      ],
+      "merged_count": 1
+    },
+    {
+      "severity": "suggestion",
+      "title": "Magic number for retry count",
+      "file": "src/payments/gateway.py",
+      "line": 12,
+      "description": "The retry loop hardcodes 3 with no named constant or comment explaining the choice.",
+      "sources": [
+        "generic"
+      ],
+      "merged_count": 1
+    }
+  ]
+}
