@@ -1,0 +1,27 @@
+[project]
+name = "claude-skill-layered-review"
+version = "0.1.0"
+description = "Layered local code review for Claude Code: a generic pass plus pluggable domain agents, consolidated into one deduplicated report."
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "Lucas de Lima" }]
+requires-python = ">=3.11"
+dependencies = []
+
+[dependency-groups]
+dev = ["pytest", "ruff", "jsonschema"]
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.black]
+line-length = 100
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.uv]
+package = false

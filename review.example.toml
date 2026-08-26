@@ -1,0 +1,46 @@
+report_language = "en"
+base_ref = "origin/main"
+include_staged = true
+include_worktree = true
+
+[generic_layer]
+enabled = true
+command = "/code-review"
+effort = "high"
+layer_priority = 1
+
+[[agents]]
+name = "domain-reviewer"
+file = "agents/domain-reviewer.md"
+match = ["src/**/*.py", "src/**/*.ts"]
+layer_priority = 3
+reason = "backend or domain logic changed"
+
+[[agents]]
+name = "ux-flow-reviewer"
+file = "agents/ux-flow-reviewer.md"
+match = ["**/ui/**", "**/components/**", "**/*.tsx"]
+layer_priority = 3
+reason = "a user-facing interaction changed"
+
+[[agents]]
+name = "coherence-guardian"
+file = "agents/coherence-guardian.md"
+match = ["**/config/**", "**/migrations/**", "**/events/**", "**/repositories/**"]
+layer_priority = 2
+reason = "a new cross-cutting pattern was introduced"
+
+[[agents]]
+name = "e2e-test-reviewer"
+file = "agents/e2e-test-reviewer.md"
+match = ["tests/e2e/**", "**/*.feature"]
+layer_priority = 2
+reason = "end-to-end test assets changed"
+
+[dedup]
+line_tolerance = 2
+title_similarity = 0.6
+prefer = "highest_layer_priority"
+
+[severity]
+order = ["critical", "important", "suggestion"]
