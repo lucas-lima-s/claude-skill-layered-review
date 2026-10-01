@@ -122,8 +122,56 @@ def test_scope_cli_end_to_end_json(git_repo: Path) -> None:
     assert result.returncode == 0
     payload = json.loads(result.stdout)
     assert "src/orders/service.py" in payload["changed_files"]
-    assert any(a["name"] == "domain-reviewer" for a in payload["agents"])
-    assert any(a["name"] == "e2e-test-reviewer" for a in payload["skipped_agents"])
+    assert payload["agents"] == []
+    skipped = {a["name"]: a["reason"] for a in payload["skipped_agents"]}
+    assert skipped["domain-reviewer"].startswith("placeholder agent")
+    assert skipped["e2e-test-reviewer"] == "no matching files"
+
+
+def test_scope_cli_fires_filled_project_agent_with_model(git_repo: Path) -> None:
+    write_file(git_repo, "src/orders/service.py", "1\n")
+    write_file(
+        git_repo, "agents/orders.md", "---\nname: orders\n---\n\n## Scope\nsrc/orders only.\n"
+    )
+    write_file(
+        git_repo,
+        "review.toml",
+        'base_ref = "main"\n\n[[agents]]\nname = "orders"\nfile = "agents/orders.md"\n'
+        'match = ["src/orders/**"]\nlayer_priority = 3\nmodel = "sonnet"\n\n'
+        '[[agents]]\nname = "ghost"\nfile = "agents/ghost.md"\nmatch = ["src/**"]\n',
+    )
+    commit_all(git_repo, "init")
+    write_file(git_repo, "src/orders/service.py", "2\n")
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(ROOT / "scripts" / "scope.py"),
+            "--repo",
+            str(git_repo),
+            "--config",
+            str(git_repo / "review.toml"),
+            "--json",
+        ],
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    fired = {a["name"]: a for a in payload["agents"]}
+    assert fired["orders"]["model"] == "sonnet"
+    assert fired["orders"]["file"].endswith("agents/orders.md")
+    skipped = {a["name"]: a["reason"] for a in payload["skipped_agents"]}
+    assert skipped["ghost"] == "agent file not found: agents/ghost.md"
+
+
+def test_route_agents_skips_placeholder_agent(tmp_path: Path) -> None:
+    write_file(tmp_path, "agents/todo.md", "## Scope\nTODO: fill me.\n")
+    config = {"agents": [{"name": "todo", "file": "agents/todo.md", "match": ["**/*.py"]}]}
+    fired, skipped = scope.route_agents(config, ["a.py"], [tmp_path])
+    assert fired == []
+    assert skipped[0]["reason"].startswith("placeholder agent")
 
 
 def test_scope_cli_unresolvable_base_exits_zero_with_stderr_warning(git_repo: Path) -> None:

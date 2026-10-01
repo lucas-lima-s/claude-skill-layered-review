@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `scope.py` resolves each agent file (next to `review.toml`, then the
+  repository root, then the skill directory), skips agents whose file is
+  missing or still has `TODO:` placeholders, and passes through an optional
+  per-agent `model` (and `[generic_layer].model`).
+- Agent template and shipped agents gain an "Untrusted input" section.
+
+### Changed
+
+- `SKILL.md` documents fallbacks for agents without `/code-review` or
+  subagents, a severity mapping for the generic layer, and absolute script
+  paths with `$SKILLS_PYTHON`.
+
+### Removed
+
+- `report_language` from `review.example.toml`; no script read it.
+
 ## [0.1.0] - 2026-08-25
 
 ### Added

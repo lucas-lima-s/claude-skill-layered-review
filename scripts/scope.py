@@ -8,6 +8,9 @@ import sys
 import tomllib
 from pathlib import Path
 
+SKILL_ROOT = Path(__file__).resolve().parent.parent
+PLACEHOLDER_MARKER = "TODO:"
+
 
 def to_posix(path: str) -> str:
     return path.replace("\\", "/")
@@ -88,25 +91,63 @@ def _match_parts(pattern_parts: list[str], path_parts: list[str]) -> bool:
     return _match_parts(rest, path_parts[1:])
 
 
-def route_agents(config: dict, changed_files: list[str]) -> tuple[list[dict], list[dict]]:
+def resolve_agent_file(relative: str, search_dirs: list[Path]) -> Path | None:
+    candidate = Path(relative)
+    if candidate.is_absolute():
+        return candidate if candidate.is_file() else None
+    for directory in search_dirs:
+        resolved = directory / candidate
+        if resolved.is_file():
+            return resolved.resolve()
+    return None
+
+
+def is_placeholder(agent_file: Path) -> bool:
+    text = agent_file.read_text(encoding="utf-8", errors="replace")
+    return any(line.lstrip().startswith(PLACEHOLDER_MARKER) for line in text.splitlines())
+
+
+def route_agents(
+    config: dict, changed_files: list[str], search_dirs: list[Path] | None = None
+) -> tuple[list[dict], list[dict]]:
     fired: list[dict] = []
     skipped: list[dict] = []
 
     for agent in config.get("agents", []):
         patterns = agent.get("match", [])
         matched = sorted(f for f in changed_files if any(glob_match(p, f) for p in patterns))
-        if matched:
-            fired.append(
-                {
-                    "name": agent["name"],
-                    "file": agent["file"],
-                    "reason": agent.get("reason", ""),
-                    "layer_priority": agent.get("layer_priority", 0),
-                    "files": matched,
-                }
-            )
-        else:
+        if not matched:
             skipped.append({"name": agent["name"], "reason": "no matching files"})
+            continue
+
+        entry = {
+            "name": agent["name"],
+            "file": agent["file"],
+            "reason": agent.get("reason", ""),
+            "layer_priority": agent.get("layer_priority", 0),
+            "model": agent.get("model", ""),
+            "files": matched,
+        }
+
+        if search_dirs is not None:
+            agent_file = resolve_agent_file(agent["file"], search_dirs)
+            if agent_file is None:
+                skipped.append(
+                    {"name": agent["name"], "reason": f"agent file not found: {agent['file']}"}
+                )
+                continue
+            if is_placeholder(agent_file):
+                skipped.append(
+                    {
+                        "name": agent["name"],
+                        "reason": f"placeholder agent: fill the {PLACEHOLDER_MARKER} lines in "
+                        f"{agent['file']}",
+                    }
+                )
+                continue
+            entry["file"] = to_posix(str(agent_file))
+
+        fired.append(entry)
 
     return fired, skipped
 
@@ -126,6 +167,7 @@ def build_result(
             "enabled": generic_layer.get("enabled", True),
             "command": generic_layer.get("command", ""),
             "effort": generic_layer.get("effort", ""),
+            "model": generic_layer.get("model", ""),
         },
         "skipped_agents": skipped_agents,
     }
@@ -189,7 +231,8 @@ def main(argv: list[str]) -> int:
             file=sys.stderr,
         )
 
-    agents, skipped_agents = route_agents(config, changed_files)
+    search_dirs = [config_path.parent, repo, SKILL_ROOT]
+    agents, skipped_agents = route_agents(config, changed_files, search_dirs)
     generic_layer = config.get("generic_layer", {})
 
     result = build_result(base, changed_files, agents, skipped_agents, generic_layer)

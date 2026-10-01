@@ -27,7 +27,9 @@ Then edit:
   `origin/main` or `origin/develop`).
 - `[[agents]]` - replace the illustrative `match` globs with this project's
   real directory layout, and either keep, edit, or remove the four
-  placeholder agents in `agents/`.
+  placeholder agents in `agents/`. Put filled-in agent files in the project
+  (next to `review.toml` or under its root) and point `file` at them; a file
+  that still contains a `TODO:` line is skipped as a placeholder.
 - `[dedup]` and `[severity]` - tune to taste; the defaults shipped in
   `review.example.toml` are reasonable starting points.
 

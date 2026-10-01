@@ -43,8 +43,9 @@ tools that make the mechanical parts of the pattern deterministic:
 
 ## Installation
 
-Copy this repository's contents into a project (or point Claude Code's
-skill search path at it). Then, in that project:
+Clone this repository anywhere and expose the folder to each agent through
+its skills directory (Claude Code, Codex, agy or Cursor), as a symlink or a
+copy. Then, in each project you want to review:
 
 ```
 cp review.example.toml review.toml
@@ -57,21 +58,24 @@ per-project configuration, not something this template should own.
 
 ## Usage
 
-From Claude Code, trigger the skill by name or by one of its natural
+From any agent that loads skills, trigger it by name or by one of its natural
 phrasings ("layered review", "review my local diff", "run the review
 agents"). It will:
 
 1. Resolve scope with `scripts/scope.py`.
-2. Run the generic layer (`/code-review` by default).
-3. Fan out to every domain agent whose paths were touched, concurrently.
+2. Run the generic layer (`/code-review` by default, or a built-in
+   checklist where that command does not exist).
+3. Run every domain agent whose paths were touched and whose agent file is
+   filled in (concurrent subagents in Claude Code, sequential passes
+   elsewhere).
 4. Consolidate everything with `scripts/consolidate.py`.
 5. Print one report, grouped by severity, with clean layers stated
    explicitly and merged findings crediting every layer that found them.
 
-You can also run the two scripts directly, outside of Claude Code:
+You can also run the two scripts directly, outside of any agent:
 
 ```
-python scripts/scope.py --config review.toml --base origin/main --json
+python scripts/scope.py --repo . --config review.toml --base origin/main --json
 
 python scripts/consolidate.py --config review.toml \
     generic.json domain-reviewer.json e2e-test-reviewer.json \
@@ -90,7 +94,8 @@ sections:
 - `[[agents]]` - one entry per domain agent: its name, its instructions
   file under `agents/`, the glob patterns that decide whether it fires, its
   `layer_priority` (higher wins when two layers report the same defect),
-  and a human-readable `reason` shown when it is skipped.
+  an optional `model` hint for whatever launches the agent, and a
+  human-readable `reason` shown when it is skipped.
 - `[dedup]` - `line_tolerance` (how many lines apart two findings can be and
   still be considered the same spot) and `title_similarity` (the Jaccard
   threshold for merging by title when there is no shared `rule_id`).
@@ -101,7 +106,8 @@ sections:
 The four shipped agents (`domain-reviewer`, `ux-flow-reviewer`,
 `coherence-guardian`, `e2e-test-reviewer`) are placeholders: each has the
 required frontmatter and output contract filled in, worked example
-invariants, and `TODO:` markers where a real project's specifics belong. See
+invariants, and `TODO:` markers where a real project's specifics belong.
+`scope.py` refuses to run an agent whose file still has a `TODO:` line. See
 [`docs/writing-a-domain-agent.md`](docs/writing-a-domain-agent.md) for the
 full walkthrough of adding a fifth, and
 [`docs/dedup-algorithm.md`](docs/dedup-algorithm.md) for exactly how findings

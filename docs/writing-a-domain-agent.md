@@ -37,6 +37,13 @@ marker:
   decided to accept.
 - **Output contract** - leave this section as-is except for the agent name;
   it is what makes every agent's output mergeable by `consolidate.py`.
+- **Untrusted input** - keep it; it tells the agent that the reviewed code
+  is data, not instructions.
+
+The `tools:` frontmatter key is read by Claude Code subagents only; Codex,
+agy and Cursor run the agent file as plain instructions in the same session,
+so keep the instructions readable without it. Remove every `TODO:` line:
+`scope.py` skips an agent whose file still contains one.
 
 ## 3. Wire it into `review.toml`
 
@@ -48,6 +55,7 @@ name = "my-new-reviewer"
 file = "agents/my-new-reviewer.md"
 match = ["path/glob/**"]
 layer_priority = 2
+model = "sonnet"
 reason = "why this agent's scope was touched"
 ```
 
@@ -55,6 +63,9 @@ reason = "why this agent's scope was touched"
   `scripts/scope.py`): a segment of `**` matches zero or more path segments,
   any other segment matches exactly one path segment with `fnmatch`-style
   wildcards.
+- `model` is optional and passed through by `scope.py` as a hint for the
+  runtime that launches the agent (a Claude Code subagent alias such as
+  `sonnet`, or the model name another agent uses).
 - `layer_priority` decides which layer wins when two layers report the same
   defect (see `docs/dedup-algorithm.md`). A more specific, narrowly-scoped
   agent should usually outrank the generic layer.
@@ -68,7 +79,7 @@ confirm it appears in `agents`, and against one that does not to confirm it
 lands in `skipped_agents`:
 
 ```
-python scripts/scope.py --config review.toml --base main --json
+python scripts/scope.py --repo . --config review.toml --base main --json
 ```
 
 Then feed it a findings file (matching `schema/finding.schema.json`) through
